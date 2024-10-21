@@ -5,6 +5,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
+
 __metaclass__ = type
 
 DOCUMENTATION = r'''
@@ -68,6 +69,16 @@ options:
   tls:
     description: TLS Key.  If set to 'generate' it will create a key if one does not already exist.
     type: str
+  tls_type:
+    description: if we're using tls, this needs to be set to "auth"
+    default: 'auth'
+    type: str
+  tlsauth_keydir:
+    description:  keydirection, if we're using tls
+    default: default
+    choices: ['default', '0', '1', '2']
+    type: str
+
   ca:
     description: Certificate Authority name.
     type: str
@@ -117,7 +128,7 @@ options:
   digest:
     description: Auth digest algorithm.
     default: SHA256
-    choices: [ 'SHA256', 'SHA1' ]
+    choices: [ 'SHA3-512', 'SHA256', 'SHA1' ]
     type: str
   tunnel_network:
     description: IPv4 virtual network used for private communications between this client and client hosts expressed using CIDR notation.

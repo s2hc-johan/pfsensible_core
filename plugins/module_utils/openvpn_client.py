@@ -25,6 +25,8 @@ OPENVPN_CLIENT_ARGUMENT_SPEC = dict(
     protocol=dict(default='UDP4', required=False, choices=['UDP4', 'TCP4']),
     dev_mode=dict(default='tun', required=False, choices=['tun', 'tap']),
     tls=dict(required=False, type='str'),
+    tls_type=dict(required=False, type='str'),
+    tlsauth_keydir=dict(required=False, type='str'),
     ca=dict(required=False, type='str'),
     crl=dict(required=False, type='str'),
     cert=dict(required=False, type='str'),
@@ -38,7 +40,7 @@ OPENVPN_CLIENT_ARGUMENT_SPEC = dict(
     #                  choices=['AES-256-GCM', 'AES-128-GCM', 'CHACHA20-POLY1305'], type='list', elements='str'),
     data_ciphers=dict(default=None, required=False, choices=['AES-256-CBC', 'AES-256-GCM', 'AES-128-GCM', 'CHACHA20-POLY1305'], type='list', elements='str'),
     data_ciphers_fallback=dict(default='AES-256-CBC', required=False, choices=['AES-256-CBC', 'AES-256-GCM', 'AES-128-GCM', 'CHACHA20-POLY1305']),
-    digest=dict(default='SHA256', required=False, choices=['SHA256', 'SHA1']),
+    digest=dict(default='SHA256', required=False, choices=['SHA3-512', 'SHA256', 'SHA1']),
     tunnel_network=dict(default='', required=False, type='str'),
     tunnel_networkv6=dict(default='', required=False, type='str'),
     remote_network=dict(default='', required=False, type='str'),
@@ -46,6 +48,7 @@ OPENVPN_CLIENT_ARGUMENT_SPEC = dict(
     gwredir=dict(default=False, required=False, type='bool'),
     gwredir6=dict(default=False, required=False, type='bool'),
     maxclients=dict(default=None, required=False, type='int'),
+    allow_compression=dict(default='no', required=False, choices=['yes', 'asym', 'no']),
     compression=dict(default='adaptive', required=False, choices=['adaptive', '']),
     compression_push=dict(default=False, required=False, type='bool'),
     passtos=dict(default=False, required=False, type='bool'),
@@ -131,6 +134,7 @@ class PFSenseOpenVPNClientModule(PFSenseModuleBase):
             obj['tunnel_networkv6'] = self.params['tunnel_networkv6']
             obj['remote_network'] = self.params['remote_network']
             obj['remote_networkv6'] = self.params['remote_networkv6']
+            obj['allow_compression'] = self.params['allow_compression']
             obj['compression'] = self.params['compression']
             obj['topology'] = self.params['topology']
             obj['create_gw'] = self.params['create_gw']
@@ -159,6 +163,10 @@ class PFSenseOpenVPNClientModule(PFSenseModuleBase):
                     if cert_elt is None:
                         self.module.fail_json(msg='%s is not a valid certificate' % (self.params['cert']))
                     obj['certref'] = cert_elt.find('refid').text
+                if 'tls' in self.params:
+                    obj['tls'] = self.params['tls']
+                    obj['tls_type'] = self.params['tls_type']
+                    obj['tlsauth_keydir'] = self.params['tlsauth_keydir']
 
             if self.params['mode'] == 'p2p_shared_key':
                 obj['shared_key'] = self.params['shared_key']
@@ -200,6 +208,11 @@ class PFSenseOpenVPNClientModule(PFSenseModuleBase):
                     if not re.search('^-----BEGIN OpenVPN Static key V1-----.*-----END OpenVPN Static key V1-----$',
                                      key_decoded, flags=re.MULTILINE | re.DOTALL):
                         self.module.fail_json(msg='Could not recognize {0} key format: {1}'.format(param, key_decoded))
+                    else:
+                        params[param] = key_decoded
+        if "tls" in params:
+            params['tls_type'] = "auth"
+            params['tlsauth_keydir'] = 'default'
 
     def _nextvpnid(self):
         """ find next available vpnid """
